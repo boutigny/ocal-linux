@@ -1,0 +1,11 @@
+{
+  "_comment": "Exemple : remplace par le vrai numéro de série de ta caméra. Supprime cette clé _comment.",
+  "_comment2": "center_x_px/center_y_px = position ABSOLUE du centre optique fournie par le fabricant, PAS un écart.",
+  "0000000000": {
+    "center_x_px": 1933.92,
+    "center_y_px": 1090.79,
+    "ref_width": 3840,
+    "ref_height": 2160,
+    "note": "Exemple - remplace par les valeurs et la résolution native fournies par le fabricant"
+  }
+}
