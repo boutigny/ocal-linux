@@ -57,6 +57,63 @@ v4l2-ctl -d /dev/videoX --list-ctrls
 
 Le node à utiliser est celui qui affiche les contrôles caméra (`exposure_time_absolute`, `focus_absolute`, etc.) — certaines caméras exposent aussi un second node `/dev/videoX+1` sans contrôles (metadata), à ignorer.
 
+## Calibration du décentrage capteur (par numéro de série)
+
+Chaque unité OCAL a un capteur légèrement décentré par rapport au boîtier,
+et le fabricant fournit une correction propre à chaque numéro de série.
+Ce projet stocke cette correction dans `calibrations.json` (non versionné,
+voir `calibrations.example.json` pour le format) et l'applique automatiquement
+par-dessus la position choisie avec les sliders.
+
+**Important : le fabricant fournit une position ABSOLUE, pas un écart.**
+Les valeurs données par OCAL (ex: `1933.92 1090.79`) sont les coordonnées du
+centre optique réel dans l'image, à la résolution native de la caméra —
+**pas** un décalage à ajouter tel quel. Utiliser ces valeurs comme décalage
+brut envoie les cercles complètement hors de l'image ; l'outil calcule
+lui-même l'écart réel par rapport au centre géométrique.
+
+**Enregistrer la calibration de ta caméra :**
+
+```bash
+# Laisse l'outil détecter le numéro de série automatiquement via USB
+python3 -m ocal_linux.calibration --device /dev/video49 --set CENTER_X CENTER_Y --ref-width W --ref-height H
+
+# Ou fournis le numéro de série toi-même s'il n'est pas détecté automatiquement
+python3 -m ocal_linux.calibration --serial <numero_de_serie> --set CENTER_X CENTER_Y --ref-width W --ref-height H
+```
+
+- `CENTER_X CENTER_Y` : la position absolue fournie par le fabricant (ex: `1933.92 1090.79`)
+- `--ref-width` / `--ref-height` : la résolution **native** de la caméra à laquelle cette position a été mesurée (ex: `3840 2160` pour un capteur 4K) — à vérifier avec `v4l2-ctl -d /dev/videoX --list-formats-ext` (résolution la plus élevée listée). **Ne mets pas** la résolution à laquelle tu comptes utiliser la caméra si elle diffère.
+
+Exemple concret :
+```bash
+python3 -m ocal_linux.calibration --serial ABC123 --set 1933.92 1090.79 --ref-width 3840 --ref-height 2160
+# -> écart réel calculé : dx=13.92 dy=10.79 (légèrement décentré, comme attendu)
+```
+
+Le programme calcule l'écart par rapport au centre géométrique de cette
+résolution de référence, puis le remet à l'échelle automatiquement si tu
+utilises une résolution caméra différente.
+
+**Vérifier les calibrations enregistrées :**
+
+```bash
+python3 -m ocal_linux.calibration --list
+```
+
+**Au lancement**, `run.py` applique automatiquement la calibration correspondant
+au numéro de série détecté. Tu peux aussi la forcer manuellement :
+
+```bash
+python3 run.py /dev/video49 --serial <numero_de_serie>   # force la calibration à charger
+python3 run.py /dev/video49 --offset 12 -5                # force un décalage direct, ignore le fichier
+python3 run.py /dev/video49 --no-calib                    # désactive toute correction
+```
+
+Si le numéro de série n'est pas détecté automatiquement (caméra sans numéro de
+série exposé sur le bus USB) ou n'a pas encore de calibration enregistrée, le
+programme le signale et continue sans décalage.
+
 ## Utilisation
 
 ```bash
@@ -76,7 +133,7 @@ Les sliders de la fenêtre "Reglages" contrôlent en direct l'exposition, le foc
 
 ## Roadmap
 
-- [ ] Sauvegarde/chargement d'un profil par caméra (numéro de série → position du capteur), comme le logiciel officiel
+- [x] Sauvegarde/chargement d'un profil par caméra (numéro de série → position du capteur), comme le logiciel officiel
 - [ ] Détection auto des ronds/miroir par traitement d'image (Hough circles) pour proposer un centrage automatique
 - [ ] Interface graphique plus complète (PyQt) avec presets Newton / RC / SCT
 - [ ] Empaquetage (`pipx` / AppImage) pour installation simplifiée
@@ -94,3 +151,7 @@ MIT — voir [LICENSE](LICENSE).
 ## Avertissement
 
 Ce projet n'est pas affilié à OCAL / ocalworld.com. Il s'agit d'une réimplémentation indépendante basée sur le fait que le matériel OCAL utilise le standard UVC/V4L2.
+
+## Usage de l'IA
+
+Le développement des logiciels de ce projet s'est appuyé sur Claude Sonnet 5
