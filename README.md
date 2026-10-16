@@ -114,11 +114,24 @@ Si le numéro de série n'est pas détecté automatiquement (caméra sans numér
 série exposé sur le bus USB) ou n'a pas encore de calibration enregistrée, le
 programme le signale et continue sans décalage.
 
+### Vérifier le sens de la calibration
+
+Le manuel d'OCAL ne précise pas la convention (origine, sens des axes) des valeurs de calibration. Le programme suppose que ce sont les coordonnées de l'axe mécanique dans l'image (origine en haut à gauche, x vers la droite, y vers le bas). Pour vérifier, compare avec le logiciel officiel, même caméra et même résolution, en lançant d'abord `python3 run.py /dev/videoX --no-calib` pour avoir la référence sans décalage.
+
+Si le centre des cercles tombe du côté *opposé* à celui du logiciel officiel, inverse le sens du décalage :
+
+```bash
+python3 run.py /dev/videoX --flip-calib        # inverse x et y
+python3 run.py /dev/videoX --flip-calib x      # inverse seulement l'axe x (ou y)
+```
+
 ## Utilisation
 
 ```bash
 python3 run.py /dev/videoX
 ```
+
+La fenêtre d'image s'ouvre à 1600 px de large (hauteur selon le rapport d'aspect de la caméra) et reste redimensionnable à la souris. Pour une autre taille d'ouverture : `python3 run.py /dev/videoX --window-width 2000`.
 
 Raccourcis clavier :
 
@@ -127,9 +140,29 @@ Raccourcis clavier :
 | `s` | Fige l'image courante comme référence |
 | `f` | Active/désactive le fondu croisé avec la référence |
 | `+` / `-` | Ajuste l'intensité du fondu |
-| `q` | Quitte |
+| `i` / `k` | Déplace le centre des cercles de 1 px vers le haut / le bas |
+| `j` / `l` | Déplace le centre des cercles de 1 px vers la gauche / la droite |
+| `w` | Sauvegarde les réglages courants |
+| `q` | Quitte (sauvegarde automatiquement les réglages) |
 
-Les sliders de la fenêtre "Reglages" contrôlent en direct l'exposition, le focus, la position du centre et les rayons des trois cercles.
+Les sliders de la fenêtre "Reglages" contrôlent en direct l'exposition, le focus, la luminosité, le contraste, la position du centre (en pixels, avec un slider grossier et un slider fin de ±50 px par axe), les rayons et l'épaisseur des trois cercles, ainsi que la taille et l'épaisseur de la croix de collimation.
+
+## Sauvegarde des réglages
+
+Les réglages sont sauvegardés par caméra (clé = numéro de série) dans un fichier personnel, **hors du dépôt** :
+
+```
+~/.config/ocal-linux/settings.json      (ou $XDG_CONFIG_HOME/ocal-linux/settings.json)
+```
+
+Sont sauvegardés : exposition, focus, luminosité, contraste, épaisseur des cercles, rayons des trois cercles, taille et épaisseur de la croix de collimation, et la **position x, y du centre** (commune aux cercles et à la croix, sliders grossiers + fins additionnés). Le décalage constructeur (calibration) n'est pas inclus : il est recalculé à chaque lancement et s'ajoute à la position sauvegardée.
+
+- Touche `w` : sauvegarde immédiate (un message « Reglages sauvegardes » s'affiche brièvement)
+- Touche `q` : sauvegarde automatique à la sortie
+- Au lancement suivant, les réglages de la caméra détectée sont rechargés automatiquement
+- `python3 run.py /dev/videoX --no-settings` : démarre avec les valeurs par défaut sans lire le fichier
+
+Les rayons des cercles, la taille de la croix et la position du centre sont stockés en proportion de la résolution de capture, ils restent donc cohérents si tu changes de résolution (`--width` / `--height`).
 
 ## Roadmap
 
@@ -151,7 +184,3 @@ MIT — voir [LICENSE](LICENSE).
 ## Avertissement
 
 Ce projet n'est pas affilié à OCAL / ocalworld.com. Il s'agit d'une réimplémentation indépendante basée sur le fait que le matériel OCAL utilise le standard UVC/V4L2.
-
-## Usage de l'IA
-
-Le développement des logiciels de ce projet s'est appuyé sur Claude Sonnet 5
